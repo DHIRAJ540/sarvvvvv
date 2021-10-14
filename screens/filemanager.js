@@ -1,12 +1,15 @@
-import React,{useEffect} from "react";
+import React,{useEffect, useState} from "react";
 import styled from 'styled-components';
-import { Text, View, Image, FlatList, TouchableOpacity, TextInput , SafeAreaView,StyleSheet,ScrollView} from 'react-native';
+import { Text, View, Image, FlatList, TouchableOpacity, TextInput , SafeAreaView,StyleSheet,ScrollView, NativeModules, Modal} from 'react-native';
 import icondata from './static.json'
 import AsyncStorage from '@react-native-community/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, {Circle} from 'react-native-svg';
 import { useTheme } from '../contexts/themeContext';
 import FAIcon from "react-native-vector-icons/FontAwesome5";
+import ImagePicker from 'react-native-image-crop-picker';
+import RNFS from 'react-native-fs'
+import SweetAlert from 'react-native-sweet-alert';
 import Footer from '../components/footer';
 import settings from '../img/settings.png';
 import Account from '../img/account.png'
@@ -16,7 +19,9 @@ import audioadd from '../img/audioadd.png';
 import image from '../img/image.png';
 import imagea from '../img/imagea.png';
 import imageadd from '../img/imageadd.png';
-
+const { RNVirgilCrypto } = NativeModules;
+import RNFetchBlob from 'rn-fetch-blob';
+import futch from './progress';
 import video from '../img/video.png';
 import { FlatGrid } from "react-native-super-grid";
 import videoa from '../img/videoa.png';
@@ -42,7 +47,12 @@ import folderimgdark from '../img/folderimgdark.png';
 import fileimgdark from '../img/fileimgdark.png';
 import addfolderdark from '../img/add.png';
 import optionsdark from '../img/optionsdark.png';
+import close from '../img/close.png';
 export default function FileManager({navigation})  {
+  const normalizeFilePath = (path) => (path.startsWith('file://') ? path.slice(7) : path);
+  const [loading,setloading] = React.useState(false);
+  const [fill,setfill] = React.useState(0)
+  const [settedping,setping] = useState(0)
     var bottompop;
     const [avatar_uri,seturi] = React.useState(require("../img/avatar/male1.png"))
     const darkTheme = useTheme();
@@ -120,8 +130,11 @@ export default function FileManager({navigation})  {
     // ]
     const [path,setpath] = React.useState("/")
     const [data,setdata] = React.useState([])
+    const [modalOpen, setModalOpen] = useState(false);
+    const [newFolderName, setNewFolderName] = useState("");
     const data1 = data
-    const [filestructure,setfilestructure] = React.useState({})
+    const [filestructure,setfilestructure] = React.useState({});
+
     const [arr,setarr] = React.useState([])
   
     useEffect(()=>{
@@ -141,6 +154,127 @@ export default function FileManager({navigation})  {
         }) ()
     
     },[])
+
+    const uploadFile = async () => {
+       
+      // let result = await DocumentPicker.getDocumentAsync({type: documentType});
+      // setDocumentUrl(result.uri);
+      // alert(result.uri);
+      let result = await ImagePicker.openPicker({multiple:true})
+      const mypub = await AsyncStorage.getItem('mypub')
+      console.log("dfdfdfdf>>>>>>>>>>>>",mypub)
+      let i = 0;
+      console.log(result)
+      const paths = [];
+      for(let i = 0;i<result.length;i++){
+          var temp = result[i].path;
+          temp = temp.replace("file:///data/user/0/com.sarvvid/cache/react-native-image-crop-picker/",'')
+          console.log(temp)
+          paths.push(temp)
+      }
+      console.log(paths)
+      let data = new FormData();
+      const ut = await AsyncStorage.getItem("userToken");
+      const id = ut
+      data.append('IMEI',id);
+      data.append('name', 'avatar');
+      for(let i=0;i<paths.length;i++){
+          const encryptedPath = await RNVirgilCrypto.encryptFile(
+              normalizeFilePath(result[i].path),
+              RNFetchBlob.fs.dirs.DownloadDir + `/encypted_temp_${i}`,
+              [mypub],
+              false
+          );
+          
+          data.append("doc[]",{
+              uri: 'file://'+encryptedPath,
+              type: result[i].mime,
+              name: paths[i]
+          })
+      }
+      const config = {
+          method: 'POST',
+          headers: {
+           'Content-Type': 'multipart/form-data',
+          },
+          body: data,
+         };
+      // AsyncStorage.setItem("authtoken","bc697cfd541d55a8bc69de6a09447e7e9dc67c6d")
+      const at = await AsyncStorage.getItem("authtoken");
+  
+  console.log(data)
+   var respo =  await futch(`http://103.155.73.35:3000/upload?ping=${settedping}&IMEI=${ut}`, {
+      method: 'post',
+      body : data,
+      headers:{
+          'Content-type' : 'multipart/form-data',
+          'Authtoken' : at
+      },
+   },(progressEvent)=>{
+       const tem = (progressEvent.loaded/progressEvent.total)*100
+       setloading(true)
+       setfill(tem)
+   } )
+   setloading(false)
+   setfill(0)
+
+   console.log(respo)
+   respo = JSON.parse(respo.response)
+   for(let i=0;i<paths.length;i++){
+       RNFS.unlink(`${RNFetchBlob.fs.dirs.DownloadDir}/encypted_temp_${i}`)
+   }
+   if(respo.success){
+      AsyncStorage.setItem("authtoken",respo.newtoken)
+      SweetAlert.showAlertWithOptions({
+          title: 'Uploaded Successfully',
+          subTitle: '',
+          confirmButtonTitle: 'OK',
+          confirmButtonColor: '#000',
+          style: 'success',
+          cancellable: true
+        },
+          callback =>{ console.log('callback')
+          setdone(true)
+  });
+     
+   } 
+   else{
+      SweetAlert.showAlertWithOptions({
+          title: 'OOPS!..',
+          subTitle: 'Something went wrong',
+          confirmButtonTitle: 'OK',
+          confirmButtonColor: '#000',
+          style: 'error',
+          cancellable: true
+        },
+          callback => console.log('callback'));
+   }
+      // let filename = documentUrl.split('/').pop();
+      
+      // let match = /\.(\w+)$/.exec(filename);
+      // let type = match ? `${match[1]}` : pin``;
+
+      // console.log(type)
+      
+      // const form = new FormData();
+
+      // form.append(documentType, {
+      // uri: documentUrl,
+      // type: type,
+      // name: result.name,
+      // });
+
+      // fetch('http://localhost:19002', {
+  // 	method: 'POST',
+  // 	body: form
+  // }).then(response => {
+  // 	console.log(response)
+  // }).catch(err => {
+  // 	console.log(err);
+  // });
+
+
+  }
     const backgroundStyle = {
         //   backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
         };
@@ -272,7 +406,7 @@ export default function FileManager({navigation})  {
               {icondata.grids.map(grid => (
                 <TouchableOpacity
                   key={grid.icon}
-                  onPress={() => this.Scrollable.close()}
+                  onPress={grid.label === "Upload File" ? () => uploadFile() : grid.label === "Create New Folder" ? () => setModalOpen(true) : null}
                   style={styles.gridButtonContainer}
                 >
                   <View style={[styles.gridButton, { backgroundColor: grid.color }]}>
@@ -295,9 +429,60 @@ export default function FileManager({navigation})  {
                 }}>
           <Image source = {addfolder} style={{height:70,width:70,shadowColor:"grey"}}/>
         </TouchableOpacity>
+
+        <ModalContainer>
+                <Modal
+                animationType= "slide"
+                visible = {modalOpen}
+                transparent = {true}
+                >
+                  <ModalView>
+                    <View style = {{alignItems:"flex-start", width:"100%"}}>
+                      <View style = {{flexDirection:"row", justifyContent:"space-between", width:"100%"}}>
+                        <Text style = {{fontSize:16, fontWeight:"bold"}}>Enter new folder name</Text>
+                       <TouchableOpacity onPress = {() => setModalOpen(false)}>
+                       <Image source = {close}/>
+                       </TouchableOpacity>
+                      </View>
+                      <TextInput onChange = {(value) => setNewFolderName(value)} value = {newFolderName} style = {{borderBottomWidth:2, borderColor:"#0092ff", width:"100%", marginTop:20}}/>
+                      <TouchableOpacity>
+                        <Text style = {{fontSize:17, color:"#0092ff", marginTop:20}}>CREATE</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </ModalView>
+
+                </Modal>
+        </ModalContainer>
         </View>
     )
 }
+
+const ModalView = styled.View`
+    margin: auto;
+    width:90%;
+   
+    backgroundColor: white;
+    borderRadius: 20px;
+    padding: 20px;
+    alignItems: center;
+    shadowColor: #000;
+
+    shadowOpacity: 0.25;
+    shadowRadius: 4px;
+    elevation: 25
+`
+
+
+const ModalContainer = styled.View`
+  
+   
+justify-content: center;
+align-items: center;
+margin-top: 20px;
+ 
+
+ elevation:55;
+`
 
 const Block = styled.TouchableOpacity`
 

@@ -1,6 +1,6 @@
 import React, {useState,useEffect} from "react";
 import styled from 'styled-components';
-import { Text,Animated, View, Image, TouchableOpacity, FlatList, TextInput,NativeModules,StyleSheet, SafeAreaView } from 'react-native';
+import { Text,Animated, View, Image, TouchableOpacity, FlatList, TextInput,NativeModules,StyleSheet, SafeAreaView, Modal } from 'react-native';
 import AsyncStorage from "@react-native-community/async-storage";
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigationParam } from '@react-navigation/native';
@@ -43,6 +43,9 @@ import addfolderdark from '../img/addfolderdark.png';
 import RBSheet from "react-native-raw-bottom-sheet";
 import optionsdark from '../img/optionsdark.png';
 import back from '../img/back.png';
+import close from '../img/close.png';
+import md5 from "react-native-md5"
+import closedark from '../img/closedark.png'
 const images = [
     {
       uri: "https://images.unsplash.com/photo-1571501679680-de32f1e7aad4",
@@ -58,6 +61,8 @@ const images = [
 
 const normalizeFilePath = (path) => (path.startsWith('file://') ? path.slice(7) : path);
 export default function FileDetails(navigation) {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
     var bottompop;
 
     const [documentUrl, setDocumentUrl] = useState('');
@@ -175,50 +180,50 @@ export default function FileDetails(navigation) {
        
         // let result = await DocumentPicker.getDocumentAsync({type: documentType});
         // setDocumentUrl(result.uri);
-        // alert(result.uri);
-        let result = await ImagePicker.openPicker({multiple:true})
-        const mypub = await AsyncStorage.getItem('mypub')
-        console.log("dfdfdfdf>>>>>>>>>>>>",mypub)
-        let i = 0;
-        console.log(result)
-        const paths = [];
-        for(let i = 0;i<result.length;i++){
-            var temp = result[i].path;
-            temp = temp.replace("file:///data/user/0/com.sarvvid/cache/react-native-image-crop-picker/",'')
-            console.log(temp)
-            paths.push(temp)
-        }
-        console.log(paths)
-        let data = new FormData();
-        const ut = await AsyncStorage.getItem("userToken");
-        const id = ut
-        data.append('IMEI',id);
-        data.append('name', 'avatar');
-        for(let i=0;i<paths.length;i++){
-            const encryptedPath = await RNVirgilCrypto.encryptFile(
-                normalizeFilePath(result[i].path),
-                RNFetchBlob.fs.dirs.DownloadDir + `/encypted_temp_${i}`,
-                [mypub],
-                false
-            );
+    //     // alert(result.uri);
+    //     let result = await ImagePicker.openPicker({multiple:true})
+    //     const mypub = await AsyncStorage.getItem('mypub')
+    //     console.log("dfdfdfdf>>>>>>>>>>>>",mypub)
+    //     let i = 0;
+    //     console.log(result)
+    //     const paths = [];
+    //     for(let i = 0;i<result.length;i++){
+    //         var temp = result[i].path;
+    //         temp = temp.replace("file:///data/user/0/com.sarvvid/cache/react-native-image-crop-picker/",'')
+    //         console.log(temp)
+    //         paths.push(temp)
+    //     }
+    //     console.log(paths)
+    //     let data = new FormData();
+    //     const ut = await AsyncStorage.getItem("userToken");
+    //     const id = ut
+    //     data.append('IMEI',id);
+    //     data.append('name', 'avatar');
+    //     for(let i=0;i<paths.length;i++){
+    //         const encryptedPath = await RNVirgilCrypto.encryptFile(
+    //             normalizeFilePath(result[i].path),
+    //             RNFetchBlob.fs.dirs.DownloadDir + `/encypted_temp_${i}`,
+    //             [mypub],
+    //             false
+    //         );
             
-            data.append("doc[]",{
-                uri: 'file://'+encryptedPath,
-                type: result[i].mime,
-                name: paths[i]
-            })
-        }
-        const config = {
-            method: 'POST',
-            headers: {
-             'Content-Type': 'multipart/form-data',
-            },
-            body: data,
-           };
-        // AsyncStorage.setItem("authtoken","bc697cfd541d55a8bc69de6a09447e7e9dc67c6d")
-        const at = await AsyncStorage.getItem("authtoken");
+    //         data.append("doc[]",{
+    //             uri: 'file://'+encryptedPath,
+    //             type: result[i].mime,
+    //             name: paths[i]
+    //         })
+    //     }
+    //     const config = {
+    //         method: 'POST',
+    //         headers: {
+    //          'Content-Type': 'multipart/form-data',
+    //         },
+    //         body: data,
+    //        };
+    //     // AsyncStorage.setItem("authtoken","bc697cfd541d55a8bc69de6a09447e7e9dc67c6d")
+    //     const at = await AsyncStorage.getItem("authtoken");
     
-    console.log(data)
+    // console.log(data)
     //  var respo =  await futch(`http://103.155.73.35:3000/upload?ping=${settedping}&IMEI=${ut}&type=${navigation.route.params.type}`, {
     //     method: 'post',
     //     body : data,
@@ -231,44 +236,89 @@ export default function FileDetails(navigation) {
     //      setloading(true)
     //      setfill(tem)
     //  } )
-     setloading(false)
-     setfill(0)
+    //  setloading(false)
+    //  setfill(0)
 
-     console.log(respo)
-     respo = JSON.parse(respo.response)
-     for(let i=0;i<paths.length;i++){
-         RNFS.unlink(`${RNFetchBlob.fs.dirs.DownloadDir}/encypted_temp_${i}`)
-     }
-     if(respo.success){
-        AsyncStorage.setItem("authtoken",respo.newtoken)
-        SweetAlert.showAlertWithOptions({
-            title: 'Uploaded Successfully',
-            subTitle: '',
-            confirmButtonTitle: 'OK',
-            confirmButtonColor: '#000',
-            style: 'success',
-            cancellable: true
-          },
-            callback =>{ console.log('callback')
-            setdone(true)
-    });
+    //  console.log(respo)
+    //  respo = JSON.parse(respo.response)
+    //  for(let i=0;i<paths.length;i++){
+    //      RNFS.unlink(`${RNFetchBlob.fs.dirs.DownloadDir}/encypted_temp_${i}`)
+    //  }
+    //  // upload 
+    //  if(respo.success){
+    //     AsyncStorage.setItem("authtoken",respo.newtoken)
+    var tempfile = filestructure
+        var newEntry = {};
+        newEntry.parentPath = path;
+        newEntry.name = navigation.route.params.name;
+        newEntry.type = "__file__";
+        newEntry.path =`${newEntry.parentPath}/${newEntry.name}`;
+        var id = md5.hex_md5(newEntry.path + newEntry.type);
+
+
+        newEntry.creatorName = "";
+        newEntry.size = 0;
+        newEntry.parentID = md5.hex_md5(path+"__folder__");
+        console.log(tempfile);
+        Object.assign(tempfile,newEntry)
+        console.log(newEntry.parentID)
+        console.log(filestructure)
+        console.log(tempfile[`${newEntry.parentID}`])
+        tempfile[`${newEntry.parentID}`]["children"].push(id);
+        AsyncStorage.setItem("fileSystem",JSON.stringify(tempfile))
+        setfilestructure(tempfile)
+        // fetch("http://103.155.73.35:300/api/updatefileSystem",{
+        //   method: "POST",
+        //   body: JSON.stringify({'IMEI':ut, "fileSystem":filestructure}).then(res=>{
+        //     if(res.success){
+        //       console.log("bnmbnmb")
+        //     }
+        //   })
+        // })
+// now upload 
+//restert kro
+
+    //     axios({
+    //       method:"POST",
+    //       url:"http://103.155.73.35:3000/api/updatefileSystem",
+    //       headers:{
+    //         'Accept': 'application/json, text/plain, */*',  // It can be used to overcome cors errors
+    //                 'Content-Type': 'application/json',
+    //       },
+    //       data:JSON.stringify({'IMEI':ut, "fileSystem":filestructure})
+    //     }).then(res=>{
+    //       if(resp.success0){
+    //         console.log("Dsdsds")
+    //       }
+    //     })
+    //     SweetAlert.showAlertWithOptions({
+    //         title: 'Uploaded Successfully',
+    //         subTitle: '',
+    //         confirmButtonTitle: 'OK',
+    //         confirmButtonColor: '#000',
+    //         style: 'success',
+    //         cancellable: true
+    //       },
+    //         callback =>{ console.log('callback')
+    //         setdone(true)
+    // });
        
-     } 
-     else{
-        SweetAlert.showAlertWithOptions({
-            title: 'OOPS!..',
-            subTitle: 'Something went wrong',
-            confirmButtonTitle: 'OK',
-            confirmButtonColor: '#000',
-            style: 'error',
-            cancellable: true
-          },
-            callback => console.log('callback'));
-     }
-        // let filename = documentUrl.split('/').pop();
+    //  } 
+    //  else{
+    //     SweetAlert.showAlertWithOptions({
+    //         title: 'OOPS!..',
+    //         subTitle: 'Something went wrong',
+    //         confirmButtonTitle: 'OK',
+    //         confirmButtonColor: '#000',
+    //         style: 'error',
+    //         cancellable: true
+    //       },
+    //         callback => console.log('callback'));
+    //  }
+    //     // let filename = documentUrl.split('/').pop();
         
-        // let match = /\.(\w+)$/.exec(filename);
-        // let type = match ? `${match[1]}` : pin``;
+    //     // let match = /\.(\w+)$/.exec(filename);
+    //     // let type = match ? `${match[1]}` : pin``;
 
         // console.log(type)
         
@@ -511,7 +561,7 @@ export default function FileDetails(navigation) {
               {icondata.grids.map(grid => (
                 <TouchableOpacity
                   key={grid.icon}
-                  onPress={grid.label === "Upload File" ? () => uploadFile() : null}
+                  onPress={grid.label === "Upload File" ? () => uploadFile() : grid.label === "Create New Folder" ? () => setModalOpen(true) : null}
                   style={styles.gridButtonContainer}
                 >
                   <View style={[styles.gridButton, { backgroundColor: grid.color }]}>
@@ -536,9 +586,48 @@ export default function FileDetails(navigation) {
                 }}>
           <Image source = {addfolder} style={{height:70,width:70,shadowColor:"grey"}}/>
         </TouchableOpacity>
+
+        <ModalContainer>
+                <Modal
+                animationType= "slide"
+                visible = {modalOpen}
+                transparent = {true}
+                >
+                  <ModalView>
+                    <View style = {{alignItems:"flex-start", width:"100%"}}>
+                      <View style = {{flexDirection:"row", justifyContent:"space-between", width:"100%"}}>
+                        <Text style = {{fontSize:16, fontWeight:"bold"}}>Enter new folder name</Text>
+                       <TouchableOpacity onPress = {() => setModalOpen(false)}>
+                       <Image source = {close}/>
+                       </TouchableOpacity>
+                      </View>
+                      <TextInput onChange = {(value) => setNewFolderName(value)} value = {newFolderName} style = {{borderBottomWidth:2, borderColor:"#0092ff", width:"100%", marginTop:20}}/>
+                      <TouchableOpacity>
+                        <Text style = {{fontSize:17, color:"#0092ff", marginTop:20}}>CREATE</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </ModalView>
+
+                </Modal>
+        </ModalContainer>
         </View>
     )
 }
+
+const ModalView = styled.View`
+    margin: auto;
+    width:90%;
+   
+    backgroundColor: white;
+    borderRadius: 20px;
+    padding: 20px;
+    alignItems: center;
+    shadowColor: #000;
+
+    shadowOpacity: 0.25;
+    shadowRadius: 4px;
+    elevation: 25
+`
 const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -737,6 +826,18 @@ const styles = StyleSheet.create({
           color: "#FFF",
         },
   });
+
+  const ModalContainer = styled.View`
+  
+   
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+     
+    
+     elevation:55;
+    
+`
 const Container = styled.View`
     width:100%;
     flex: 1;
