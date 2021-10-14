@@ -406,7 +406,7 @@ export default function FileManager({navigation})  {
               {icondata.grids.map(grid => (
                 <TouchableOpacity
                   key={grid.icon}
-                  onPress={grid.label === "Upload File" ? () => uploadFile() : grid.label === "Create New Folder" ? () => setModalOpen(true) : null}
+                 onPress={grid.label === "Upload File" ? () => uploadFile() : grid.label === "Create New Folder" ? () => setModalOpen(true) : null}
                   style={styles.gridButtonContainer}
                 >
                   <View style={[styles.gridButton, { backgroundColor: grid.color }]}>
